@@ -26,7 +26,10 @@ class button(object):
                     font_size = self.size,
                     x=self.x+self.width//2, y=self.y+self.height//2,
                     anchor_x="center", anchor_y="center")
+        
         if not (self.width and self.height):
+            label.anchor_x = "left"
+            label.anchor_y = "bottom"
             self.width = label.content_width
             self.height = label.content_height
         
@@ -78,12 +81,15 @@ class tile(button):
     
     def click(self):
         self.revealed = True
-        self.caption = str(self.value)
+        if self.value:
+            self.caption = str(self.value)
+        else:
+            self.caption = ""
         self.color = (100,0,0)
 
 class intro(pyglet.window.Window):
     def __init__ (self):
-        super(intro, self).__init__(800, 800, fullscreen = False, vsync = True)
+        super(intro, self).__init__(600, 600, fullscreen = False, vsync = True)
     
     def on_draw(self):
         self.clear()
@@ -136,42 +142,11 @@ class main(pyglet.window.Window):
         grid_vals = [[0 for _ in range(0,self.nbox)] for _ in range(0,self.nbox)]
         for mine in mines:
             i,j = mine
-            l_exists = False; r_exists = False; u_exists = False; d_exists = False
-            if i < self.nbox - 1:
-                u_exists = True
-            if j > 0:
-                l_exists = True
-            if j < self.nbox - 1:
-                r_exists = True
-            if i > 0:
-                d_exists = True
-            
-            # above
-            if u_exists:
-                grid_vals[i+1][j] += 1
-                # top-left
-                if l_exists:
-                    grid_vals[i+1][j-1] += 1
-                # top-right
-                if r_exists:
-                    grid_vals[i+1][j+1] += 1
-            # middle
-            if l_exists:
-                grid_vals[i][j-1] += 1
-            if r_exists:
-                grid_vals[i][j+1] += 1
-            # bottom
-            if d_exists:
-                grid_vals[i-1][j] += 1
-                # bottom-left
-                if l_exists:
-                    grid_vals[i-1][j-1] += 1
-                if r_exists:
-                    grid_vals[i-1][j+1] += 1
+            for i,j in self.surrounding(i,j):
+                grid_vals[i][j] += 1
         for mine in mines:
             i,j = mine
             grid_vals[i][j] = -1
-        print(grid_vals)
         
         # draw_grid
         grid = []
@@ -186,6 +161,50 @@ class main(pyglet.window.Window):
         i = mouse_y // self.sbox
         j = mouse_x // self.sbox
         return (i,j)
+    
+    def surrounding(self,i,j):
+        surr = []
+        l_exists = False; r_exists = False; u_exists = False; d_exists = False
+        if i < self.nbox - 1:
+            u_exists = True
+        if j > 0:
+            l_exists = True
+        if j < self.nbox - 1:
+            r_exists = True
+        if i > 0:
+            d_exists = True
+        # above
+        if u_exists:
+            surr.append((i+1,j))
+            # top-left
+            if l_exists:
+                surr.append((i+1,j-1))
+            # top-right
+            if r_exists:
+                surr.append((i+1,j+1))
+        # middle
+        if l_exists:
+            surr.append((i,j-1))
+        if r_exists:
+            surr.append((i,j+1))
+        # bottom
+        if d_exists:
+            surr.append((i-1,j))
+            # bottom-left
+            if l_exists:
+                surr.append((i-1,j-1))
+            if r_exists:
+                surr.append((i-1,j+1))
+        
+        return surr
+    
+    def click_surrounding(self,i,j):
+        for i,j in self.surrounding(i,j):
+            if not self.grid[i][j].revealed:
+                self.grid[i][j].click()
+                if self.grid[i][j].value == 0:
+                    self.click_surrounding(i,j)
+            
         
     def on_draw(self):
         self.clear()
@@ -214,9 +233,10 @@ class main(pyglet.window.Window):
     def on_mouse_press(self, x, y, button, modifiers):            
         if button == mouse.LEFT:
             i,j = self.tile_clicked(x,y)
-            self.grid[i][j].click()
-            print("Button at location: " + str(self.tile_clicked(x,y)) + " pressed.")
-            print("Location: " + str(x) + "," + str(y))
+            if not self.grid[i][j].revealed:
+                self.grid[i][j].click()
+                if self.grid[i][j].value == 0:
+                    self.click_surrounding(i,j)
 
 # change resource path
 pyglet.resource.path = [r"C:\Users\Ahmad\Documents\GitHub\Classic-Game-Recreations\minesweeper\resources"]
