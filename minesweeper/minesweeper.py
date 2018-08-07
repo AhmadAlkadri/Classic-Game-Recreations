@@ -8,33 +8,33 @@ import pyglet
 from pyglet.window import key
 from pyglet.window import mouse
 
-from time import time # Used for FPS calc
-
 class button(object):
-    def __init__(self,x,y,colour,text,size=24):
+    def __init__(self,x,y,colour,text,size=24,width=0,height=0):
         self.x = x
         self.y = y
         self.text = text
         self.size = size
+        self.width = width
+        self.height = height
         
         # Create text label, and set box size based on the text
-        label = pyglet.text.Label(
-                text,
-                font_name = "Times New Roman",
-                font_size = self.size,
-                x=self.x, y=self.y,
-                anchor_x="left", anchor_y="bottom"
-                )
-        self.width = label.content_width+10
-        self.height = label.content_height+10
+        if text:
+            label = pyglet.text.Label(
+                    text,
+                    font_name = "Times New Roman",
+                    font_size = self.size,
+                    x=self.x, y=self.y,
+                    anchor_x="left", anchor_y="bottom")
+            self.width = label.content_width
+            self.height = label.content_height
         
         # draw rectangle around text
         pyglet.graphics.draw(4,pyglet.gl.GL_QUADS,
                      ("v2i",self.create_quad_vertex_list(
-                             self.x-5,self.y-5,self.width,self.height)),
+                             self.x,self.y,self.width,self.height)),
                      ('c3B', tuple(list(colour)*4)))
-
-        label.draw()
+        if text:
+            label.draw()
         
     @staticmethod
     def create_quad_vertex_list(x, y, width, height):
@@ -47,9 +47,27 @@ class button(object):
         else:
             return False
 
-class main(pyglet.window.Window):
+class tile(button):
+    def __init__(self,x,y,side,value):
+        super(tile,self).__init__(x,y,(0,0,255),"",width=side,height=side)
+        self.x
+        self.y
+        self.side = side
+        self.value = value
+
+        self.draw_border(self.x,self.y,self.side)
+        
+    @staticmethod
+    # Draws border around the tile
+    def draw_border(x,y,s):
+        coords = (x,y,x+s,y,x+s,y+s,x,y+s)
+        pyglet.graphics.draw(4, pyglet.gl.GL_LINE_LOOP,
+                             ("v2f", coords),
+                             ("c3f", (1.,1.,1.)*4))
+
+class intro(pyglet.window.Window):
     def __init__ (self):
-        super(main, self).__init__(800, 800, fullscreen = False, vsync = True)
+        super(intro, self).__init__(800, 800, fullscreen = False, vsync = True)
     
     def on_draw(self):
         self.clear()
@@ -63,14 +81,44 @@ class main(pyglet.window.Window):
                   anchor_x="center", anchor_y="center",
                   batch=main_batch)
         
-        
-        new_game = button(self.width//2-100,self.height//2,(0,0,255),"New Game")
-        
         # buttons
-        self.buttons = [new_game]
+        self.new_game = button(self.width//2-100,self.height//2,(0,0,255),"New Game")
         
         # draw labels
+        main_batch.draw()
+    
+    def on_mouse_press(self, x, y, button, modifiers):
+        if self.new_game.clicked_on(x,y):
+            main()
+            self.close()
+
+class main(pyglet.window.Window):
+    def __init__ (self):
+        super(main, self).__init__(1000, 1000, fullscreen = False, vsync = True)
+    
+    def on_draw(self):
+        self.clear()
         
+        # welcome message
+        main_batch = pyglet.graphics.Batch()
+        greeting = pyglet.text.Label("Begin!",
+                  font_name = "Times New Roman",
+                  font_size = 36,
+                  x=self.width//2, y=self.height//2 + 200,
+                  anchor_x="center", anchor_y="center",
+                  batch=main_batch)
+        
+        
+        # draw_grid
+        box_side = 50
+        grid = []
+        for i in range(0,10):
+            row = []
+            for j in range(0,10):
+                row.append(tile(i*box_side,j*box_side,box_side,1))
+            grid.append(row)
+                    
+        # draw labels
         main_batch.draw()
         
     def on_key_press(self, symbol, modifiers):
@@ -83,42 +131,15 @@ class main(pyglet.window.Window):
         elif symbol == key.ENTER:
             print('The enter key was pressed.')
     
-    def on_mouse_press(self, x, y, button, modifiers):
+    def on_mouse_press(self, x, y, button, modifiers):            
         if button == mouse.LEFT:
             print('The left mouse button was pressed.')
             print("Location: " + str(x) + "," + str(y))
-        for button in self.buttons:
-            if button.clicked_on(x,y):
-                print("Button " + button.text + " clicked!")
 
 # change resource path
 pyglet.resource.path = [r"C:\Users\Ahmad\Documents\GitHub\Classic-Game-Recreations\minesweeper\resources"]
 pyglet.resource.reindex()
 
-# Create window
-greet_window = main()
-
-
-
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-
+# start game
+intro()
 pyglet.app.run()
