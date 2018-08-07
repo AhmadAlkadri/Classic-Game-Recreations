@@ -20,13 +20,13 @@ class button(object):
         self.height = height
         
         # Create text label, and set box size based on the text
-        if text:
-            label = pyglet.text.Label(
+        label = pyglet.text.Label(
                     text,
                     font_name = "Times New Roman",
                     font_size = self.size,
-                    x=self.x, y=self.y,
-                    anchor_x="left", anchor_y="bottom")
+                    x=self.x+self.width//2, y=self.y+self.height//2,
+                    anchor_x="center", anchor_y="center")
+        if not (self.width and self.height):
             self.width = label.content_width
             self.height = label.content_height
         
@@ -35,8 +35,8 @@ class button(object):
                      ("v2i",self.create_quad_vertex_list(
                              self.x,self.y,self.width,self.height)),
                      ('c3B', tuple(list(colour)*4)))
-        if text:
-            label.draw()
+                     
+        label.draw()
         
     @staticmethod
     def create_quad_vertex_list(x, y, width, height):
@@ -57,7 +57,10 @@ class tile(button):
         self.value = value
         self.revealed = revealed
         self.color = (0,0,255)
-        super(tile,self).__init__(self.x,self.y,self.color,"",width=self.side,height=self.side)
+        self.caption = ""
+        self.rev_size = 40
+            
+        super(tile,self).__init__(self.x,self.y,self.color,self.caption,width=self.side,height=self.side)
 
         self.draw_border()
         
@@ -70,13 +73,13 @@ class tile(button):
                              ("c3f", (1.,1.,1.)*4))
     
     def redraw(self):
-        super(tile,self).__init__(self.x,self.y,self.color,"",width=self.side,height=self.side)
+        super(tile,self).__init__(self.x,self.y,self.color,self.caption,size=self.rev_size,width=self.side,height=self.side)
         self.draw_border()
     
     def click(self):
         self.revealed = True
-        self.color = (255,0,0)
-        super(tile,self).__init__(self.x,self.y,self.color,"",width=self.side,height=self.side)
+        self.caption = str(self.value)
+        self.color = (100,0,0)
 
 class intro(pyglet.window.Window):
     def __init__ (self):
@@ -108,12 +111,81 @@ class intro(pyglet.window.Window):
 class main(pyglet.window.Window):
     def __init__ (self):
         # grid specifications
-        self.sbox = 50 # side-length of one tile
+        self.sbox = 75 # side-length of one tile
         self.nbox = 10 # number of tiles in a side-length
         
         # initialize window
         super(main, self).__init__(self.sbox*self.nbox,self.sbox*self.nbox,fullscreen = False, vsync = True)
         self.grid = self.init_grid()
+        
+    def init_grid(self):
+        # get mine locations
+        locs = [i for i in range(0,self.nbox**2)]
+        num_mines = self.nbox**2//10
+        mines = []
+        for _ in range(0,num_mines):
+            ind = randint(0,len(locs)-1)
+            mines.append(locs[ind])
+            del locs[ind]
+        for ind,mine in enumerate(mines):
+            i = mine // self.nbox
+            j = mine % self.nbox
+            mines[ind] = (i,j)
+        
+        # populate mine location and hints in the grid
+        grid_vals = [[0 for _ in range(0,self.nbox)] for _ in range(0,self.nbox)]
+        for mine in mines:
+            i,j = mine
+            l_exists = False; r_exists = False; u_exists = False; d_exists = False
+            if i < self.nbox - 1:
+                u_exists = True
+            if j > 0:
+                l_exists = True
+            if j < self.nbox - 1:
+                r_exists = True
+            if i > 0:
+                d_exists = True
+            
+            # above
+            if u_exists:
+                grid_vals[i+1][j] += 1
+                # top-left
+                if l_exists:
+                    grid_vals[i+1][j-1] += 1
+                # top-right
+                if r_exists:
+                    grid_vals[i+1][j+1] += 1
+            # middle
+            if l_exists:
+                grid_vals[i][j-1] += 1
+            if r_exists:
+                grid_vals[i][j+1] += 1
+            # bottom
+            if d_exists:
+                grid_vals[i-1][j] += 1
+                # bottom-left
+                if l_exists:
+                    grid_vals[i-1][j-1] += 1
+                if r_exists:
+                    grid_vals[i-1][j+1] += 1
+        for mine in mines:
+            i,j = mine
+            grid_vals[i][j] = -1
+        print(grid_vals)
+        
+        # draw_grid
+        grid = []
+        for i in range(0,self.nbox):
+            row = []
+            for j in range(0,self.nbox):
+                row.append(tile(j*self.sbox,i*self.sbox,self.sbox,grid_vals[i][j]))
+            grid.append(row)
+        return grid
+    
+    def tile_clicked(self,mouse_x,mouse_y):
+        i = mouse_y // self.sbox
+        j = mouse_x // self.sbox
+        return (i,j)
         
     def on_draw(self):
         self.clear()
@@ -125,43 +197,9 @@ class main(pyglet.window.Window):
         
         # welcome message
         main_batch = pyglet.graphics.Batch()        
-        
-        
                     
         # draw labels
         main_batch.draw()
-    
-    def init_grid(self):
-        # get mine locations
-        locs = [i for i in range(0,self.nbox**2)]
-        num_mines = self.nbox**2//10
-        mines = []
-        for i in range(0,num_mines):
-            ind = randint(0,len(locs)-1)
-            mines.append(locs[ind])
-            del locs[ind]
-        
-        # populate mine locations in grid
-        grid_vals = [[0 for _ in range(0,self.nbox)] for _ in range(0,self.nbox)]
-        for mine in mines:
-            i = mine // self.nbox
-            j = mine % self.nbox
-            grid_vals[i][j] = -1
-        print(grid_vals)
-        
-        # populate values depending on how many mines surround a tile
-        for i in enumerate(grid_vals):
-            for j in enumerate(grid_vals):
-                pass
-        
-        # draw_grid
-        grid = []
-        for i in range(0,self.nbox):
-            row = []
-            for j in range(0,self.nbox):
-                row.append(tile(i*self.sbox,j*self.sbox,self.sbox,0))
-            grid.append(row)
-        return grid
         
     def on_key_press(self, symbol, modifiers):
         self.clear()
@@ -175,7 +213,9 @@ class main(pyglet.window.Window):
     
     def on_mouse_press(self, x, y, button, modifiers):            
         if button == mouse.LEFT:
-            print('The left mouse button was pressed.')
+            i,j = self.tile_clicked(x,y)
+            self.grid[i][j].click()
+            print("Button at location: " + str(self.tile_clicked(x,y)) + " pressed.")
             print("Location: " + str(x) + "," + str(y))
 
 # change resource path
