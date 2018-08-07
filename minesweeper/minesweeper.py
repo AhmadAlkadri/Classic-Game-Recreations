@@ -8,6 +8,8 @@ import pyglet
 from pyglet.window import key
 from pyglet.window import mouse
 
+from random import randint
+
 class button(object):
     def __init__(self,x,y,colour,text,size=24,width=0,height=0):
         self.x = x
@@ -48,22 +50,33 @@ class button(object):
             return False
 
 class tile(button):
-    def __init__(self,x,y,side,value):
-        super(tile,self).__init__(x,y,(0,0,255),"",width=side,height=side)
-        self.x
-        self.y
+    def __init__(self,x,y,side,value,revealed=False):
+        self.x = x
+        self.y = y
         self.side = side
         self.value = value
+        self.revealed = revealed
+        self.color = (0,0,255)
+        super(tile,self).__init__(self.x,self.y,self.color,"",width=self.side,height=self.side)
 
-        self.draw_border(self.x,self.y,self.side)
+        self.draw_border()
         
-    @staticmethod
     # Draws border around the tile
-    def draw_border(x,y,s):
+    def draw_border(self):
+        x,y,s = self.x,self.y,self.side
         coords = (x,y,x+s,y,x+s,y+s,x,y+s)
         pyglet.graphics.draw(4, pyglet.gl.GL_LINE_LOOP,
                              ("v2f", coords),
                              ("c3f", (1.,1.,1.)*4))
+    
+    def redraw(self):
+        super(tile,self).__init__(self.x,self.y,self.color,"",width=self.side,height=self.side)
+        self.draw_border()
+    
+    def click(self):
+        self.revealed = True
+        self.color = (255,0,0)
+        super(tile,self).__init__(self.x,self.y,self.color,"",width=self.side,height=self.side)
 
 class intro(pyglet.window.Window):
     def __init__ (self):
@@ -94,32 +107,61 @@ class intro(pyglet.window.Window):
 
 class main(pyglet.window.Window):
     def __init__ (self):
-        super(main, self).__init__(1000, 1000, fullscreen = False, vsync = True)
-    
+        # grid specifications
+        self.sbox = 50 # side-length of one tile
+        self.nbox = 10 # number of tiles in a side-length
+        
+        # initialize window
+        super(main, self).__init__(self.sbox*self.nbox,self.sbox*self.nbox,fullscreen = False, vsync = True)
+        self.grid = self.init_grid()
+        
     def on_draw(self):
         self.clear()
         
+        # draw grid
+        for row in self.grid:
+            for square in row:
+                square.redraw()
+        
         # welcome message
-        main_batch = pyglet.graphics.Batch()
-        greeting = pyglet.text.Label("Begin!",
-                  font_name = "Times New Roman",
-                  font_size = 36,
-                  x=self.width//2, y=self.height//2 + 200,
-                  anchor_x="center", anchor_y="center",
-                  batch=main_batch)
+        main_batch = pyglet.graphics.Batch()        
         
         
-        # draw_grid
-        box_side = 50
-        grid = []
-        for i in range(0,10):
-            row = []
-            for j in range(0,10):
-                row.append(tile(i*box_side,j*box_side,box_side,1))
-            grid.append(row)
                     
         # draw labels
         main_batch.draw()
+    
+    def init_grid(self):
+        # get mine locations
+        locs = [i for i in range(0,self.nbox**2)]
+        num_mines = self.nbox**2//10
+        mines = []
+        for i in range(0,num_mines):
+            ind = randint(0,len(locs)-1)
+            mines.append(locs[ind])
+            del locs[ind]
+        
+        # populate mine locations in grid
+        grid_vals = [[0 for _ in range(0,self.nbox)] for _ in range(0,self.nbox)]
+        for mine in mines:
+            i = mine // self.nbox
+            j = mine % self.nbox
+            grid_vals[i][j] = -1
+        print(grid_vals)
+        
+        # populate values depending on how many mines surround a tile
+        for i in enumerate(grid_vals):
+            for j in enumerate(grid_vals):
+                pass
+        
+        # draw_grid
+        grid = []
+        for i in range(0,self.nbox):
+            row = []
+            for j in range(0,self.nbox):
+                row.append(tile(i*self.sbox,j*self.sbox,self.sbox,0))
+            grid.append(row)
+        return grid
         
     def on_key_press(self, symbol, modifiers):
         self.clear()
