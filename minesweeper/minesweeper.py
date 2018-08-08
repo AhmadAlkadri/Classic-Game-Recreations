@@ -11,16 +11,17 @@ from pyglet.window import mouse
 from random import randint
 
 class button(object):
-    def __init__(self,x,y,colour,text,size=24,width=0,height=0):
+    def __init__(self,x,y,color,text,size=24,width=0,height=0):
         self.x = x
         self.y = y
         self.text = text
         self.size = size
         self.width = width
         self.height = height
+        self.color = color
         
         # Create text label, and set box size based on the text
-        label = pyglet.text.Label(
+        self.label = pyglet.text.Label(
                     text,
                     font_name = "Times New Roman",
                     font_size = self.size,
@@ -28,22 +29,24 @@ class button(object):
                     anchor_x="center", anchor_y="center")
         
         if not (self.width and self.height):
-            label.anchor_x = "left"
-            label.anchor_y = "bottom"
-            self.width = label.content_width
-            self.height = label.content_height
+            self.label.anchor_x = "left"
+            self.label.anchor_y = "bottom"
+            self.width = self.label.content_width
+            self.height = self.label.content_height
         
-        # draw rectangle around text
-        pyglet.graphics.draw(4,pyglet.gl.GL_QUADS,
-                     ("v2i",self.create_quad_vertex_list(
-                             self.x,self.y,self.width,self.height)),
-                     ('c3B', tuple(list(colour)*4)))
-                     
-        label.draw()
+        # draw rectangle around text and place text
+        self.draw_btn()
         
     @staticmethod
     def create_quad_vertex_list(x, y, width, height):
         return x, y, x + width, y, x + width, y + height, x, y + height
+    
+    def draw_btn(self):
+        pyglet.graphics.draw(4,pyglet.gl.GL_QUADS,
+                     ("v2i",self.create_quad_vertex_list(
+                             self.x,self.y,self.width,self.height)),
+                     ('c3B', tuple(list(self.color)*4)))
+        self.label.draw()
     
     def clicked_on(self,mouse_x,mouse_y):
         if (self.x <= mouse_x <= (self.x + self.width)) and \
@@ -60,10 +63,9 @@ class tile(button):
         self.value = value
         self.revealed = revealed
         self.color = (0,0,255)
-        self.caption = ""
         self.rev_size = 40
             
-        super(tile,self).__init__(self.x,self.y,self.color,self.caption,width=self.side,height=self.side)
+        super(tile,self).__init__(self.x,self.y,self.color,"",width=self.side,height=self.side)
 
         self.draw_border()
         
@@ -74,17 +76,14 @@ class tile(button):
         pyglet.graphics.draw(4, pyglet.gl.GL_LINE_LOOP,
                              ("v2f", coords),
                              ("c3f", (1.,1.,1.)*4))
-    
-    def redraw(self):
-        super(tile,self).__init__(self.x,self.y,self.color,self.caption,size=self.rev_size,width=self.side,height=self.side)
+    def draw_tile(self):
+        self.draw_btn()
         self.draw_border()
     
     def click(self):
         self.revealed = True
         if self.value:
-            self.caption = str(self.value)
-        else:
-            self.caption = ""
+            self.label.text = str(self.value)
         self.color = (100,0,0)
 
 class intro(pyglet.window.Window):
@@ -212,7 +211,7 @@ class main(pyglet.window.Window):
         # draw grid
         for row in self.grid:
             for square in row:
-                square.redraw()
+                square.draw_tile()
         
         # welcome message
         main_batch = pyglet.graphics.Batch()        
